@@ -75,6 +75,12 @@ class Program
                     }
                 ]
             })
+            .With(new SkiaOptions()
+            {
+                // Avalonia 默认的 GPU 纹理/资源缓存上限约 28 MB，对 ClassIsland 这类元素密集、
+                // 频繁重绘的界面偏小。提高到 128 MB 以减少显存颠簸导致的重绘卡顿。
+                MaxGpuResourceSizeBytes = 128 * 1024 * 1024
+            })
             .With(new Win32PlatformOptions()
             {
                 // 禁用 DirectComposition 以修复在部分版本 Windows 上 CPU 占用过高的问题。

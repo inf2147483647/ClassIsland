@@ -31,6 +31,7 @@ using UpdateStatus = ClassIsland.Shared.Enums.UpdateStatus;
 using JetBrains.Profiler.Api;
 #endif
 using ClassIsland.Core;
+using ClassIsland.Core.Icons;
 using Sentry;
 using ClassIsland.Shared.IPC.Abstractions.Services;
 using dotnetCampus.Ipc.CompilerServices.GeneratedProxies;
@@ -578,33 +579,33 @@ public partial class App : AppBase, IAppHost
                     return;
                 }
                 
-                await ProcessInstanceExisted();
-                Environment.Exit(0);
-                return;
+                // 只有确认正在运行的实例与本实例既不在同一程序目录、也不共用数据目录时，
+                // 才交给用户决定是否重复启动，避免两个实例同时写入同一份配置与缓存。
+                var verdict = InstanceLocation.CompareRunningInstances(
+                    Environment.ProcessPath ?? "", CommonDirectories.AppRootFolderPath);
+
+                if (verdict != InstanceLocationVerdict.DifferentLocation)
+                {
+                    if (verdict == InstanceLocationVerdict.Unknown)
+                    {
+                        Logger?.LogWarning("无法确认正在运行的 ClassIsland 实例的位置，按位置相同处理。");
+                    }
+
+                    await ProcessInstanceExisted();
+                    Environment.Exit(0);
+                    return;
+                }
+
+                if (!await ConfirmDuplicateInstance())
+                {
+                    Environment.Exit(0);
+                    return;
+                }
+
+                Logger?.LogInformation("已按用户确认重复启动本实例。");
             }
         }
         
-#if RELEASE
-        // TODO: 退出 DP 后记得删
-        await new FATaskDialog()
-        {
-            Title = "ClassIsland",
-            Header = "欢迎使用 2.2-Misha Developer Preview",
-            Content = "此版本仅供开发人员进行早期预览，稳定性欠佳，不适用于生产环境或日常使用。如果您在使用的过程中遇到问题，欢迎前往 GitHub issues 上提交 issue！",
-            IconSource = new AdvancedImageIconSource()
-            {
-                Uri = "avares://ClassIsland/Assets/HoYoStickers/米沙_欢迎光临.png"
-            },
-            XamlRoot = GetRootWindow(),
-            Buttons = [
-                new FATaskDialogButton("确定", true)
-                {
-                    IsDefault = true
-                }
-            ]
-        }.ShowAsync();
-#endif
-
         // 检测临时目录
         if (Environment.CurrentDirectory.Contains(Path.GetTempPath()))
         {
@@ -777,6 +778,31 @@ public partial class App : AppBase, IAppHost
         Settings = GetService<SettingsService>().Settings;
         Settings.IsSystemSpeechSystemExist = isSystemSpeechSystemExist;
         Settings.DiagnosticStartupCount++;
+
+#if RELEASE
+        // TODO: 退出 DP 后记得删
+        // 该提示受应用设置控制，因此必须放在设置加载之后显示。
+        if (!Settings.IsDeveloperPreviewNoticeDisabled)
+        {
+            await new FATaskDialog()
+            {
+                Title = "ClassIsland",
+                Header = "欢迎使用 2.2-Misha Developer Preview",
+                Content = "此版本仅供开发人员进行早期预览，稳定性欠佳，不适用于生产环境或日常使用。如果您在使用的过程中遇到问题，欢迎前往 GitHub issues 上提交 issue！",
+                IconSource = new AdvancedImageIconSource()
+                {
+                    Uri = "avares://ClassIsland/Assets/HoYoStickers/米沙_欢迎光临.png"
+                },
+                XamlRoot = GetRootWindow(),
+                Buttons = [
+                    new FATaskDialogButton("确定", true)
+                    {
+                        IsDefault = true
+                    }
+                ]
+            }.ShowAsync();
+        }
+#endif
 
         // 记录 MLE
         if (ApplicationCommand.PrevSessionMemoryKilled)
@@ -1201,9 +1227,43 @@ public partial class App : AppBase, IAppHost
         }
     }
 
+    private async Task<bool> ConfirmDuplicateInstance()
+    {
+        var dialog = new FATaskDialog()
+        {
+            Title = "检测到已启动 ClassIsland",
+            Content = "检测到已启动 ClassIsland，是否重复启动？" + Environment.NewLine + Environment.NewLine +
+                      "正在运行的实例与本实例不在同一位置，两者可以同时运行，但界面和设置相互独立。",
+            XamlRoot = GetRootWindow(),
+            Buttons =
+            [
+                new FATaskDialogButton("取消", false)
+            ],
+            Commands =
+            [
+                new FATaskDialogCommand()
+                {
+                    DialogResult = true,
+                    ClosesOnInvoked = true,
+                    Text = "重复启动",
+                    Description = "保留正在运行的 ClassIsland，同时启动本实例。",
+                    IconSource = new FluentIconSource(FluentIcons.WindowNewRegular),
+                }
+            ]
+        };
+        var r = await dialog.ShowAsync();
+        return Equals(r, true);
+    }
+
     public static void ReleaseLock()
     {
         var app = (App)Application.Current!;
+        if (!app.IsMutexCreateNew)
+        {
+            // 重复启动的实例并未持有互斥锁，释放它会抛出异常。
+            return;
+        }
+
         app.Mutex?.ReleaseMutex();
     }
 

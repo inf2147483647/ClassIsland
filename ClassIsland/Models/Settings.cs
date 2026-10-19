@@ -70,6 +70,7 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
     private bool _isMainWindowVisible = true;
     private bool _isAndroidOverlayEnabled;
     private bool _isWelcomeWindowShowed = false;
+    private bool _isDeveloperPreviewNoticeDisabled = false;
     private bool _isReportingEnabled = true;
     private Dictionary<string, string> _releaseChannels = new()
     {
@@ -266,6 +267,20 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
         {
             if (value == _isWelcomeWindowShowed) return;
             _isWelcomeWindowShowed = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 是否不再显示开发者预览版的欢迎提示弹窗。
+    /// </summary>
+    public bool IsDeveloperPreviewNoticeDisabled
+    {
+        get => _isDeveloperPreviewNoticeDisabled;
+        set
+        {
+            if (value == _isDeveloperPreviewNoticeDisabled) return;
+            _isDeveloperPreviewNoticeDisabled = value;
             OnPropertyChanged();
         }
     }

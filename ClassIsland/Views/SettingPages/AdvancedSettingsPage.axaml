@@ -45,6 +45,15 @@
                 </controls:FASettingsExpander.Footer>
             </controls:FASettingsExpander>
 
+            <!-- 开发者预览提示 -->
+            <controls:FASettingsExpander IconSource="{ci:FluentIconSource {ci:FI MegaphoneRegular}}"
+                                        Header="禁用开发者预览提示"
+                                        Description="启用后，启动应用时将不再显示「欢迎使用 2.2-Misha Developer Preview」提示弹窗。">
+                <controls:FASettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding ViewModel.SettingsService.Settings.IsDeveloperPreviewNoticeDisabled, Mode=TwoWay}"/>
+                </controls:FASettingsExpander.Footer>
+            </controls:FASettingsExpander>
+
             <Panel IsVisible="{Binding Platform, Source={x:Static ci:AppBase.Current}, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter='arm64'}">
                 <controls:FASettingsExpander IconSource="{ci:FluentIconSource &#xF483;}"
                                            Header="使用系统标题栏"

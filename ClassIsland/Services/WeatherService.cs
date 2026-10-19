@@ -356,6 +356,17 @@ public class WeatherService : ObservableRecipient, IHostedService, IWeatherServi
             Logger.LogInformation("获取天气信息： {}", uri);
             var info = await WebRequestHelper.Default.GetJson<WeatherInfo>(new Uri(uri));
 
+            // 真实响应必带顶层 updateTime；空响应（{}）反序列化后 UpdateTimeUnix 为 0。
+            // 必须在访问 info 之前校验：既避免无效数据覆盖上一次的有效数据（例如气温被清空），
+            // 也避免后面访问 info.Alerts 时遇到 null。
+            if (info is null || info.UpdateTimeUnix <= 0 || info.Current?.Temperature is null)
+            {
+                Logger.LogWarning("天气接口返回了无效或不完整的数据，已忽略本次刷新以保留上一次的有效数据。");
+                result.IsSuccess = false;
+                result.ErrorMessage = "天气接口返回数据不完整";
+                return result;
+            }
+
             // 排除天气预警
             var validExclusions = Settings.ExcludedWeatherAlerts
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -379,6 +390,10 @@ public class WeatherService : ObservableRecipient, IHostedService, IWeatherServi
                     Logger.LogInformation("已丢弃旧预警：（{}，{}）{}", a.Title, a.PubTime, a.Detail);
             }
             info.Alerts = latest.Values.ToList();
+
+            // 本次响应是有效数据，但个别字段可能为空。只补齐为空的字段，
+            // 其余字段照常使用本次的实时数据，避免因一个字段缺失而整包作废。
+            MergeWeatherFallback(info.Current, Settings.LastWeatherInfo?.Current);
 
             if (OperatingSystem.IsAndroid())
             {
@@ -408,6 +423,56 @@ public class WeatherService : ObservableRecipient, IHostedService, IWeatherServi
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 用上一次的有效数据补齐本次响应中为空的当前天气字段。
+    /// </summary>
+    /// <remarks>
+    /// 只补空字段：本次接口返回了真实数据的字段保持实时更新，不会因为个别字段缺失而整包作废。
+    /// 注意不要补 <see cref="CurrentWeather.Weather"/>（"99" 是接口表示"未知"的正常取值）、
+    /// <see cref="WeatherInfo.Alerts"/>（空列表表示确实没有预警）以及各项预报（空表示接口未提供）。
+    /// </remarks>
+    private static void MergeWeatherFallback(CurrentWeather current, CurrentWeather? fallback)
+    {
+        if (current is null || fallback is null)
+        {
+            return;
+        }
+
+        current.FeelsLike = MergeValueUnitPair(current.FeelsLike, fallback.FeelsLike);
+        current.Humidity = MergeValueUnitPair(current.Humidity, fallback.Humidity);
+        current.Pressure = MergeValueUnitPair(current.Pressure, fallback.Pressure);
+        current.Temperature = MergeValueUnitPair(current.Temperature, fallback.Temperature);
+        current.Visibility = MergeValueUnitPair(current.Visibility, fallback.Visibility);
+        current.Wind = new WindInfo
+        {
+            Direction = MergeValueUnitPair(current.Wind?.Direction, fallback.Wind?.Direction),
+            Speed = MergeValueUnitPair(current.Wind?.Speed, fallback.Wind?.Speed)
+        };
+    }
+
+    /// <summary>
+    /// 当本次的值为空而上一次的值有效时，沿用上一次的值，否则使用本次的值。
+    /// </summary>
+    private static ValueUnitPair MergeValueUnitPair(ValueUnitPair? current, ValueUnitPair? fallback)
+    {
+        if (!string.IsNullOrEmpty(current?.Value))
+        {
+            return current;
+        }
+
+        if (string.IsNullOrEmpty(fallback?.Value))
+        {
+            return current ?? new ValueUnitPair();
+        }
+
+        // 复制一份，避免新旧两份天气数据共享同一个对象。
+        return new ValueUnitPair
+        {
+            Value = fallback.Value,
+            Unit = fallback.Unit
+        };
     }
 
     public string GetWeatherTextByCode(string code)

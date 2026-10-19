@@ -7,30 +7,13 @@
         </Border>
     </Design.PreviewWith>
 
-    <!-- Add Styles Here -->
+    <!--
+        华丽档的错峰入场动画。实际的隐藏态写入与逐帧插值由
+        ClassIsland.Core.Assists.IntroAnimationHelper 完成（不依赖样式动画系统，
+        避免“填充态清除延迟”导致的“先显示最终态再重播”抽动），
+        这里只负责把 animated-intro 面板挂上行为。
+    -->
     <Style Selector=":is(Panel).animated-intro">
         <Setter Property="behaviors:StackPanelIntroAnimationBehavior.IsIntroAnimationEnabled" Value="True"/>
-        <Style Selector="^> :is(Control)[(behaviors|StackPanelIntroAnimationBehavior.CanPlayAnimation)=True]">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform">
-                <Setter.Value>
-                    <TranslateTransform Y="-25"/>
-                </Setter.Value>
-            </Setter>
-            <Style Selector="^[(behaviors|StackPanelIntroAnimationBehavior.IsAnimationPlayed)=True]">
-                <Style.Animations>
-                    <Animation Duration="0:0:0.75" FillMode="Both" Easing="0.00, 1.00, 0.00, 1.00">
-                        <KeyFrame Cue="0%">
-                            <Setter Property="TranslateTransform.Y" Value="50"/>
-                            <Setter Property="Opacity" Value="0"/>
-                        </KeyFrame>
-                        <KeyFrame Cue="100%">
-                            <Setter Property="TranslateTransform.Y" Value="0"/>
-                            <Setter Property="Opacity" Value="1"/>
-                        </KeyFrame>
-                    </Animation>
-                </Style.Animations>
-            </Style>
-        </Style>
     </Style>
 </Styles>

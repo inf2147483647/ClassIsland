@@ -6,6 +6,7 @@
         xmlns:ci="http://classisland.tech/schemas/xaml/core"
         xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia"
         xmlns:themes="clr-namespace:ClassIsland.Core.Themes"
+        xmlns:assists="clr-namespace:ClassIsland.Core.Assists"
         xmlns:controls1="clr-namespace:SmoothScroll.Avalonia.Controls;assembly=SmoothScroll.Avalonia.Controls">
     <Styles.Resources>
         <ResourceDictionary>
@@ -372,6 +373,19 @@
                                            FadeInEasing="0,0 0,1"
                                            FadeOutEasing="0,0 0,1"/>
         </Setter>
+    </Style>
+
+    <!--
+        华丽动画的通用接入点（动画级别非“华丽”时附加属性不产生任何效果）：
+        - 所有滚动容器默认启用鼠标滚轮平滑滚动；
+        - 所有 FluentAvalonia 折叠栏默认包进平滑展开宿主。
+    -->
+    <Style Selector=":is(ScrollViewer)">
+        <Setter Property="assists:IntroAnimationAssist.IsSmoothScrollEnabled" Value="True"/>
+    </Style>
+
+    <Style Selector=":is(controls|FASettingsExpander)">
+        <Setter Property="assists:IntroAnimationAssist.IsExpandHostEnabled" Value="True"/>
     </Style>
 
     <StyleInclude Source="./Themes/TextBaselineFixes.axaml"/>

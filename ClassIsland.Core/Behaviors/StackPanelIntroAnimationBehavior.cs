@@ -1,14 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
-using Avalonia.Threading;
 using ClassIsland.Core.Abstractions.Services;
-using ReactiveUI;
+using ClassIsland.Core.Assists;
 
 namespace ClassIsland.Core.Behaviors;
 
 /// <summary>
-/// <see cref="StackPanel"/> 进入动画行为。
+/// <see cref="Panel"/> 进入动画行为：把 <c>animated-intro</c> 面板的子元素交给
+/// <see cref="IntroAnimationHelper"/> 播放错峰入场动画（仅在动画级别为“华丽”时生效）。
 /// </summary>
 public class StackPanelIntroAnimationBehavior
 {
@@ -17,18 +16,6 @@ public class StackPanelIntroAnimationBehavior
 
     public static void SetIsIntroAnimationEnabled(Panel obj, bool value) => obj.SetValue(IsIntroAnimationEnabledProperty, value);
     public static bool GetIsIntroAnimationEnabled(Panel obj) => obj.GetValue(IsIntroAnimationEnabledProperty);
-
-    public static readonly AttachedProperty<bool> IsAnimationPlayedProperty =
-        AvaloniaProperty.RegisterAttached<StackPanelIntroAnimationBehavior, Control, bool>("IsAnimationPlayed");
-
-    public static void SetIsAnimationPlayed(Control obj, bool value) => obj.SetValue(IsAnimationPlayedProperty, value);
-    public static bool GetIsAnimationPlayed(Control obj) => obj.GetValue(IsAnimationPlayedProperty);
-
-    public static readonly AttachedProperty<bool> CanPlayAnimationProperty =
-        AvaloniaProperty.RegisterAttached<StackPanelIntroAnimationBehavior, Control, bool>("CanPlayAnimation");
-
-    public static void SetCanPlayAnimation(Control obj, bool value) => obj.SetValue(CanPlayAnimationProperty, value);
-    public static bool GetCanPlayAnimation(Control obj) => obj.GetValue(CanPlayAnimationProperty);
 
     public static readonly AttachedProperty<bool> IsAnimationPlayingStartedProperty =
         AvaloniaProperty.RegisterAttached<StackPanelIntroAnimationBehavior, Panel, bool>("IsAnimationPlayingStarted");
@@ -43,51 +30,25 @@ public class StackPanelIntroAnimationBehavior
 
     private static void HandleIsIntroAnimationChanged(Panel panel, AvaloniaPropertyChangedEventArgs args)
     {
-        if (!GetIsIntroAnimationEnabled(panel) || GetIsAnimationPlayingStarted(panel) || IThemeService.AnimationLevel <= 1)
+        if (!GetIsIntroAnimationEnabled(panel) || GetIsAnimationPlayingStarted(panel) ||
+            IThemeService.AnimationLevel < 2)
         {
             return;
         }
 
-        var animable = panel.Children
+        // 保持原有语义：只对没有自定义变换的子元素播放入场动画，避免覆盖子元素自身的 RenderTransform
+        // （IntroAnimationHelper 会用 TranslateTransform 覆盖参与元素的变换）。
+        var targets = panel.Children
             .Where(x => x.RenderTransform == null && x.IsVisible)
             .ToList();
-        foreach (var c in animable)
-        {
-            SetCanPlayAnimation(c, true);
-        }
-
-        panel.Loaded += (_, _) =>
-        {
-            StartAnimation(panel);
-        };
-    }
-
-    private static void StartAnimation(Panel panel)
-    {
-        if (!GetIsIntroAnimationEnabled(panel) || GetIsAnimationPlayingStarted(panel))
+        if (targets.Count == 0)
         {
             return;
         }
 
-        var targets = panel.Children.Where(GetCanPlayAnimation).ToList();
-        var index = 0;
-        var timer = new DispatcherTimer(DispatcherPriority.Send)
-        {
-            Interval = TimeSpan.FromSeconds(0.025)
-        };
-        timer.Tick += (sender, args) =>
-        {
-            if (index >= targets.Count)
-            {
-                timer.Stop();
-                return;
-            }
-
-            SetIsAnimationPlayed(targets[index], true);
-            index++;
-        };
         SetIsAnimationPlayingStarted(panel, true);
-        timer.Start();
+        // 先写入隐藏态，保证可见首帧即为隐藏态，避免闪现最终态。
+        IntroAnimationHelper.Prepare(targets);
+        panel.Loaded += (_, _) => _ = IntroAnimationHelper.PlayAsync(targets);
     }
-
 }
