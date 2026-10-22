@@ -75,7 +75,6 @@ public class PluginService : IPluginService
         {
             try
             {
-                bool isEnabledBefore = true;
                 using var pkg = ZipFile.OpenRead(pkgPath);
                 var mf = pkg.GetEntry(PluginManifestFileName);
                 if (mf == null)
@@ -87,15 +86,12 @@ public class PluginService : IPluginService
                 Console.Write($"正在处理插件安装: {manifest.Name}({manifest.Id},{manifest.Version})...");
                 if (Directory.Exists(targetPath))
                 {
-                    if(File.Exists(Path.Combine(targetPath,".disabled")))
-                    {
-                        isEnabledBefore = false;
-                    }
+                    // 更新插件时不保留 .disabled 标记：更新后的插件一律回到已启用状态，
+                    // 避免「临时禁用插件以更新、更新后却一直被留在禁用状态」的情况。
                     Directory.Delete(targetPath, true);
                 }
                 Directory.CreateDirectory(targetPath);
                 ZipFile.ExtractToDirectory(pkgPath, targetPath);
-                if(!isEnabledBefore) File.WriteAllText(Path.Combine(targetPath, ".disabled"), "");
                 InstalledPlugins.Add(manifest);
             }
             catch (Exception e)
