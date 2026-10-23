@@ -13,6 +13,7 @@
       xmlns:converters="clr-namespace:ClassIsland.Core.Converters;assembly=ClassIsland.Core"
       xmlns:commands="clr-namespace:ClassIsland.Core.Commands;assembly=ClassIsland.Core"
       xmlns:ci="http://classisland.tech/schemas/xaml/core"
+      xmlns:models="clr-namespace:ClassIsland.Models"
       xmlns:controls3="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
       xmlns:abstraction="clr-namespace:ClassIsland.Platforms.Abstraction;assembly=ClassIsland.Platforms.Abstractions"
       mc:Ignorable="d" 
@@ -213,12 +214,21 @@
                     </controls3:FASettingsExpanderItem.Footer>
                 </controls3:FASettingsExpanderItem>
                 <controls3:FASettingsExpanderItem Content="启动文字"
+                                                Description="选择启动界面显示的文字来源。“回声洞”会在每次启动时随机显示一条文本。"
                                                 IsVisible="{Binding !ViewModel.ManagementService.Policy.DisableSplashCustomize, Mode=OneWay}">
                     <controls3:FASettingsExpanderItem.Footer>
-                        <TextBox MinWidth="200" MaxWidth="300"
-                                 Watermark="正在启动…"
-                                 Text="{Binding ViewModel.SettingsService.Settings.SplashCustomText}"
-                                 VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ComboBox SelectedIndex="{Binding ViewModel.SettingsService.Settings.SplashTextSource, Mode=TwoWay, Converter={x:Static ci:EnumToIntConverter.Instance}}"
+                                      VerticalAlignment="Center">
+                                <ComboBoxItem>自定义文本</ComboBoxItem>
+                                <ComboBoxItem>回声洞</ComboBoxItem>
+                            </ComboBox>
+                            <TextBox MinWidth="200" MaxWidth="300"
+                                     Watermark="正在启动…"
+                                     IsVisible="{Binding ViewModel.SettingsService.Settings.SplashTextSource, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:SplashTextSourceType.Custom}}"
+                                     Text="{Binding ViewModel.SettingsService.Settings.SplashCustomText}"
+                                     VerticalAlignment="Center" />
+                        </StackPanel>
                     </controls3:FASettingsExpanderItem.Footer>
                 </controls3:FASettingsExpanderItem>
                 <controls3:FASettingsExpanderItem Content="显示详细状态信息"

@@ -1,14 +1,21 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Avalonia.Platform;
 using ClassIsland.Core.Abstractions.Services;
 using ClassIsland.Core.Abstractions.Services.Management;
+using ClassIsland.Core.Extensions;
+using ClassIsland.Models;
 using ClassIsland.Shared;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 
 namespace ClassIsland.Services;
 
 public class SplashService: ObservableRecipient, ISplashService
 {
+    private static readonly Uri EchoCaveAssetUri = new("avares://ClassIsland/Assets/Tellings.txt");
+    private readonly ILogger<SplashService> _logger;
+    private string[]? _echoCaveTexts;
     private string _splashStatus = "正在启动…";
     private double _currentProgress = 0.0;
     private ISplashProvider? _currentSplashProvider;
@@ -74,12 +81,15 @@ public class SplashService: ObservableRecipient, ISplashService
 
     private static string DefaultText { get; } = "正在启动…";
 
-    public SplashService(SettingsService settingsService, IManagementService managementService)
+    public SplashService(SettingsService settingsService, IManagementService managementService,
+        ILogger<SplashService> logger)
     {
         SettingsService = settingsService;
+        _logger = logger;
         if (managementService.Policy.DisableSplashCustomize)
         {
             SettingsService.Settings.SplashCustomLogoSource = "";
+            SettingsService.Settings.SplashTextSource = SplashTextSourceType.Custom;
             SettingsService.Settings.SplashCustomText = "";
             SettingsService.Settings.ShowDetailedStatusOnSplash = false;
         }
@@ -88,6 +98,33 @@ public class SplashService: ObservableRecipient, ISplashService
 
     public void ResetSplashText()
     {
-        SplashStatus = SettingsService.Settings.SplashCustomText == "" ? DefaultText : SettingsService.Settings.SplashCustomText;
-    }       
+        SplashStatus = SettingsService.Settings.SplashTextSource switch
+        {
+            SplashTextSourceType.EchoCave => GetRandomEchoCaveText(),
+            _ => SettingsService.Settings.SplashCustomText == ""
+                ? DefaultText
+                : SettingsService.Settings.SplashCustomText
+        };
+    }
+
+    private string GetRandomEchoCaveText()
+    {
+        if (_echoCaveTexts == null)
+        {
+            try
+            {
+                _echoCaveTexts = AssetLoader.ReadAllText(EchoCaveAssetUri)
+                    .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "读取回声洞文本失败，将使用默认启动文字");
+                _echoCaveTexts = [];
+            }
+        }
+
+        return _echoCaveTexts.Length > 0
+            ? _echoCaveTexts[Random.Shared.Next(_echoCaveTexts.Length)]
+            : DefaultText;
+    }
 }

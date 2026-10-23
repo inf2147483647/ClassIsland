@@ -118,6 +118,7 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
     private bool _expIsExcelImportEnabled = false;
     private int _timeLayoutEditorIndex = 1;
     private bool _isSplashEnabled = false;
+    private SplashTextSourceType _splashTextSource = SplashTextSourceType.Custom;
     private string _splashCustomText = "";
     private string _splashCustomLogoSource = "";
     private bool _isDebugConsoleEnabled = false;
@@ -702,6 +703,17 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
         {
             if (value == _isSplashEnabled) return;
             _isSplashEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public SplashTextSourceType SplashTextSource
+    {
+        get => _splashTextSource;
+        set
+        {
+            if (value == _splashTextSource) return;
+            _splashTextSource = value;
             OnPropertyChanged();
         }
     }
