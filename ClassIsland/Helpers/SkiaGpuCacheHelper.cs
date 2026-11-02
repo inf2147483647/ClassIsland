@@ -8,7 +8,7 @@ internal static class SkiaGpuCacheHelper
 {
     private const string StorageKey = "SkiaGpuCacheSizeMb";
 
-    public const int DefaultSizeMb = 64;
+    public const int DefaultSizeMb = 128;
     public const int MinimumSizeMb = 30;
     public const int MaximumSizeMb = 512;
 
