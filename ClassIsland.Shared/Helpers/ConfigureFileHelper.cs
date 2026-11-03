@@ -81,7 +81,7 @@ public class ConfigureFileHelper
             if (r == null)
                 return Activator.CreateInstance<T>();
             if (backupEnabled.Value)
-                File.Copy(path, backupPath, true);
+                WriteAllTextAtomic(backupPath, json);
             return r;
         }
         catch (Exception ex)
@@ -91,7 +91,7 @@ public class ConfigureFileHelper
             Logger?.LogWarning(ex, "读取 JSON 文件 {} 失败，尝试加载备份", path);
             Errors.Add(new ConfigError(path, 0, false, ex));
             var r = LoadConfig<T>(backupPath, false, true);
-            File.Copy(backupPath, path, true);
+            WriteAllTextAtomic(path, File.ReadAllText(backupPath));
             return r;
         }
     }
@@ -168,7 +168,7 @@ public class ConfigureFileHelper
         Logger?.LogInformation("写入 JSON 文件：{}", path);
         var options = writeIndented ? WriteIndentedSerializerOptions.Value : SerializerOptions;
         // 在保存时不对备份文件进行操作，以防止在保存时发生意外断电时，备份文件也受到损坏。
-        WriteAllTextSafe(path, JsonSerializer.Serialize<T>(o, options));
+        WriteAllTextAtomic(path, JsonSerializer.Serialize<T>(o, options));
     }
 
     /// <summary>
@@ -219,11 +219,43 @@ public class ConfigureFileHelper
         return raw;
     }
 
-    private static void WriteAllTextSafe(string path, string content)
+    /// <summary>
+    /// 以原子方式写入文本文件。内容先写入同目录下的临时文件并强制落盘，再用临时文件替换目标文件，避免写入过程中断导致目标文件被截断或丢失。
+    /// </summary>
+    /// <param name="path">要写入的文件路径</param>
+    /// <param name="content">要写入的内容</param>
+    public static void WriteAllTextAtomic(string path, string content)
     {
-        using var stream = new FileStream(path, FileMode.Create);
-        using var writer = new StreamWriter(stream);
-        writer.Write(content);
-        stream.Flush(true);
+        var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+            {
+                writer.Write(content);
+                writer.Flush();
+                stream.Flush(true);
+            }
+
+            ReplaceFile(temporaryPath, path);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
+    }
+
+    private static void ReplaceFile(string sourcePath, string destinationPath)
+    {
+#if NET8_0_OR_GREATER
+        File.Move(sourcePath, destinationPath, true);
+#else
+        // .NET Framework 不支持 File.Move 的覆盖重载，使用 File.Replace 以保证替换的原子性。
+        if (File.Exists(destinationPath))
+            File.Replace(sourcePath, destinationPath, null);
+        else
+            File.Move(sourcePath, destinationPath);
+#endif
     }
 }

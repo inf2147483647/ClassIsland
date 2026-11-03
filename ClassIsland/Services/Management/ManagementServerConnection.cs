@@ -16,6 +16,7 @@ using ClassIsland.Core;
 using ClassIsland.Core.Abstractions.Services;
 using ClassIsland.Core.Enums;
 using ClassIsland.Shared.Abstraction.Services;
+using ClassIsland.Shared.Helpers;
 using ClassIsland.Shared.Models.Management;
 using ClassIsland.Shared.Protobuf.Client;
 using ClassIsland.Shared.Protobuf.Enum;
@@ -173,7 +174,7 @@ public class ManagementServerConnection : IManagementServerConnection
         Logger.LogTrace("ClientRegisterClient.RegisterAsync: {} {}", r.Retcode, r.Message);
         if (r.Retcode != Retcode.Registered && r.Retcode != Retcode.Success)
             throw new Exception($"无法注册实例：{r.Message}");
-        await File.WriteAllTextAsync(ServerPublicKeyPath, r.ServerPublicKey);
+        ConfigureFileHelper.WriteAllTextAtomic(ServerPublicKeyPath, r.ServerPublicKey);
         return await GetManifest();
     }
 

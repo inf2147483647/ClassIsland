@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using ClassIsland.Models.Profile;
 using ClassIsland.Services;
+using ClassIsland.Shared.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -96,11 +97,7 @@ public partial class ProfileRecoveryViewModel : ObservableObject
             var name = $"新档案-{Guid.NewGuid():N}.json";
             var path = Path.Combine(ProfileService.ProfilePath, name);
             var profile = ProfileService.CreateProfile(true);
-            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
-            {
-                JsonSerializer.Serialize(stream, profile);
-                stream.Flush(true);
-            }
+            ConfigureFileHelper.WriteAllTextAtomic(path, JsonSerializer.Serialize(profile));
             Profiles.Add(name);
             SelectedProfile = name;
             CompleteSelection(name);

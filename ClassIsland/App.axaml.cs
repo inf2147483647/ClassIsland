@@ -695,7 +695,7 @@ public partial class App : AppBase, IAppHost
         }
 
 
-        await File.WriteAllTextAsync(startupCountFilePath, startupCount.ToString());
+        ConfigureFileHelper.WriteAllTextAtomic(startupCountFilePath, startupCount.ToString());
         AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnProcessExit;
 
         var spanProcessUpdate = spanPreInit.StartChild("startup-process-update");

@@ -13,6 +13,7 @@ using ClassIsland.Core.Helpers.UI;
 using ClassIsland.Platforms.Abstraction;
 using ClassIsland.Services;
 using ClassIsland.Shared;
+using ClassIsland.Shared.Helpers;
 using ClassIsland.ViewModels;
 using ClassIsland.ViewModels.MainViewParts;
 using FluentAvalonia.UI.Controls;
@@ -125,7 +126,7 @@ public partial class ProfileManagementView : ViewBase
         try
         {
             var profile = ClassIsland.Services.ProfileService.CreateProfile(true);
-            await File.WriteAllTextAsync(path,
+            ConfigureFileHelper.WriteAllTextAtomic(path,
                 System.Text.Json.JsonSerializer.Serialize(profile));
             RefreshProfiles();
         }

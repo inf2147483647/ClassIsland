@@ -545,7 +545,7 @@ public partial class ProfileSettingsWindow : ViewBase
 
         var profile = Services.ProfileService.CreateProfile(true);
         var json = JsonSerializer.Serialize(profile);
-        await File.WriteAllTextAsync(path, json);
+        ConfigureFileHelper.WriteAllTextAtomic(path, json);
         RefreshProfiles();
     }
 

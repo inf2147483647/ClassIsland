@@ -84,7 +84,7 @@ public partial class RefreshingPage : UserControl, IWelcomePage
                 var profileNew = ProfileService.CreateProfile(true);
                 var json = JsonSerializer.Serialize(profileNew);
                 var newFile = Guid.NewGuid().ToString();
-                await File.WriteAllTextAsync(Path.Combine(ProfileService.ProfilePath, $"{newFile}.json"), json);
+                ConfigureFileHelper.WriteAllTextAtomic(Path.Combine(ProfileService.ProfilePath, $"{newFile}.json"), json);
                 SettingsService.Settings.SelectedProfile = $"{newFile}.json";
             }
 
