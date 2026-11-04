@@ -129,6 +129,7 @@ class Program
         PlatformServices.LauncherService = new LauncherService();
 #if Platforms_Windows
         PlatformServices.WindowPlatformService = new WindowPlatformService();
+        PlatformServices.DeviceInfoService = new DeviceInfoService();
         PlatformServices.LocationService = new LocationService();
         PlatformServices.DesktopService = new DesktopService();
         PlatformServices.SystemEventsService = new SystemEventsService();
@@ -144,6 +145,7 @@ class Program
 #endif
 #if Platforms_Linux
         var windowPlatformService = new WindowPlatformService(stopToken);
+        PlatformServices.DeviceInfoService = new DeviceInfoService();
         PlatformServices.WindowPlatformService = windowPlatformService;
         PlatformServices.DesktopService = new DesktopService();
         var desktopToastService = new DesktopToastService();
@@ -156,6 +158,7 @@ class Program
 #endif
 #if Platforms_MacOs
         var service = new WindowPlatformServices();
+        PlatformServices.DeviceInfoService = new DeviceInfoService();
         PlatformServices.WindowPlatformService = service;
         PlatformServices.LocationService = new LocationService();
         PlatformServices.DesktopToastService = new DesktopToastService();
