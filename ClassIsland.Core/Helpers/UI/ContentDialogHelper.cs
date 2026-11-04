@@ -21,8 +21,9 @@ public static class ContentDialogHelper
     /// <param name="root">视觉根</param>
     /// <param name="positiveText">确认按钮文字</param>
     /// <param name="negativeText">取消按钮文字</param>
+    /// <param name="defaultButton">默认聚焦的按钮</param>
     /// <returns>是否通过验证</returns>
-    public static async Task<bool> ShowConfirmationDialog(string title, string body, string? confirmation = null, TopLevel? root = null, string positiveText = "确认", string negativeText = "取消")
+    public static async Task<bool> ShowConfirmationDialog(string title, string body, string? confirmation = null, TopLevel? root = null, string positiveText = "确认", string negativeText = "取消", FAContentDialogButton defaultButton = FAContentDialogButton.Primary)
     {
         var enablesConfirmation = !string.IsNullOrWhiteSpace(confirmation);
         var textBox = new TextBox();
@@ -47,7 +48,7 @@ public static class ContentDialogHelper
         {
             Title = title,
             Content = stackPanel,
-            DefaultButton = FAContentDialogButton.Primary,
+            DefaultButton = defaultButton,
             PrimaryButtonText = positiveText,
             CloseButtonText = negativeText
         };

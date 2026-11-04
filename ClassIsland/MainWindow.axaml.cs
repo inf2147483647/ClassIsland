@@ -34,6 +34,7 @@ using ClassIsland.Core.Helpers.UI;
 using ClassIsland.Core.Models.Components;
 using ClassIsland.Core.Models.Notification;
 using ClassIsland.Core.Models.Tutorial;
+using ClassIsland.Core.Models.UI;
 using ClassIsland.Helpers;
 using ClassIsland.Models.EventArgs;
 using ClassIsland.Platforms.Abstraction;
@@ -1636,7 +1637,7 @@ public partial class MainWindow : Window, ITopmostEffectPlayer
     }
 
     [RelayCommand]
-    private void RemoveMainWindowLine(MainWindowLineSettings? settings)
+    private async Task RemoveMainWindowLine(MainWindowLineSettings? settings)
     {
         if (settings == null)
         {
@@ -1648,7 +1649,32 @@ public partial class MainWindow : Window, ITopmostEffectPlayer
             return;
         }
 
-        ComponentsService.CurrentComponents.Lines.Remove(settings);
+        if (!await ContentDialogHelper.ShowConfirmationDialog(
+                "删除主界面行",
+                "您确定要删除这个主界面行吗？行内的组件也会一并删除。",
+                root: this,
+                positiveText: "删除",
+                defaultButton: FAContentDialogButton.Secondary))
+        {
+            return;
+        }
+
+        var lines = ComponentsService.CurrentComponents.Lines;
+        var index = lines.IndexOf(settings);
+        lines.Remove(settings);
+
+        var revertButton = new Button { Content = "撤销" };
+        var toastMessage = new ToastMessage("已删除主界面行。")
+        {
+            ActionContent = revertButton,
+            Duration = TimeSpan.FromSeconds(10)
+        };
+        revertButton.Click += (_, _) =>
+        {
+            lines.Insert(Math.Min(index, lines.Count), settings);
+            toastMessage.Close();
+        };
+        this.ShowToast(toastMessage);
     }
 
     [RelayCommand]

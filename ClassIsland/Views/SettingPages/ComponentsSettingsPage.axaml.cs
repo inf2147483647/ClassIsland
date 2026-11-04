@@ -24,6 +24,7 @@ using ClassIsland.Core.Controls.Ruleset;
 using ClassIsland.Core.Enums.SettingsWindow;
 using ClassIsland.Core.Helpers.UI;
 using ClassIsland.Core.Models.Components;
+using ClassIsland.Core.Models.UI;
 using ClassIsland.Platforms.Abstraction;
 using ClassIsland.Services;
 using ClassIsland.Shared;
@@ -161,29 +162,70 @@ public partial class ComponentsSettingsPage : SettingsPageBase
         PlatformServices.LauncherService.LaunchPath(ClassIsland.Services.ComponentsService.ComponentSettingsPath);
     }
     
-    private void ButtonRemoveSelectedComponent_OnClick(object sender, RoutedEventArgs e)
+    private async void ButtonRemoveSelectedComponent_OnClick(object sender, RoutedEventArgs e)
     {
         var remove = ViewModel.SelectedComponentSettings;
         if (remove == null)
             return;
+
+        var componentName = remove.AssociatedComponentInfo.Name;
+        if (!await ContentDialogHelper.ShowConfirmationDialog(
+                "删除组件",
+                $"您确定要删除组件“{componentName}”吗？",
+                root: TopLevel.GetTopLevel(this),
+                positiveText: "删除",
+                defaultButton: FAContentDialogButton.Secondary))
+        {
+            return;
+        }
+
         if (ViewModel.SelectedComponentSettings == ViewModel.SelectedRootComponent)
         {
             CloseComponentChildrenView();
         }
         ViewModel.SelectedComponentSettings = null;
+
+        IList<ComponentSettings>? list = null;
         if (ViewModel.SelectedComponentSettingsMain != null)
         {
             foreach (var line in ViewModel.ComponentsService.CurrentComponents.Lines)
             {
-                if (line.Children.Remove(remove))
+                if (line.Children.Contains(remove))
                 {
+                    list = line.Children;
                     break;
                 }
             }
-        } else if (ViewModel.SelectedComponentSettingsChild != null)
-        {
-            ViewModel.SelectedComponentContainerChildren.Remove(remove);
         }
+        else if (ViewModel.SelectedComponentSettingsChild != null)
+        {
+            list = ViewModel.SelectedComponentContainerChildren;
+        }
+
+        if (list == null)
+        {
+            return;
+        }
+
+        var index = list.IndexOf(remove);
+        if (index < 0)
+        {
+            return;
+        }
+        list.Remove(remove);
+
+        var revertButton = new Button { Content = "撤销" };
+        var toastMessage = new ToastMessage($"已删除组件“{componentName}”。")
+        {
+            ActionContent = revertButton,
+            Duration = TimeSpan.FromSeconds(10)
+        };
+        revertButton.Click += (_, _) =>
+        {
+            list.Insert(Math.Min(index, list.Count), remove);
+            toastMessage.Close();
+        };
+        this.ShowToast(toastMessage);
     }
     
     private void ButtonChildrenViewClose_OnClick(object sender, RoutedEventArgs e)
@@ -270,7 +312,7 @@ public partial class ComponentsSettingsPage : SettingsPageBase
         ViewModel.SelectedMainWindowLineSettings = lineSettings;
     }
 
-    private void ButtonRemoveSelectedMainWindowLine_OnClick(object? sender, RoutedEventArgs e)
+    private async void ButtonRemoveSelectedMainWindowLine_OnClick(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.ComponentsService.CurrentComponents.Lines.Count <= 1)
         {
@@ -278,8 +320,36 @@ public partial class ComponentsSettingsPage : SettingsPageBase
             return;
         }
 
-        if (ViewModel.SelectedMainWindowLineSettings != null)
-            ViewModel.ComponentsService.CurrentComponents.Lines.Remove(ViewModel.SelectedMainWindowLineSettings);
+        var settings = ViewModel.SelectedMainWindowLineSettings;
+        if (settings == null)
+            return;
+
+        if (!await ContentDialogHelper.ShowConfirmationDialog(
+                "删除主界面行",
+                "您确定要删除这个主界面行吗？行内的组件也会一并删除。",
+                root: TopLevel.GetTopLevel(this),
+                positiveText: "删除",
+                defaultButton: FAContentDialogButton.Secondary))
+        {
+            return;
+        }
+
+        var lines = ViewModel.ComponentsService.CurrentComponents.Lines;
+        var index = lines.IndexOf(settings);
+        lines.Remove(settings);
+
+        var revertButton = new Button { Content = "撤销" };
+        var toastMessage = new ToastMessage("已删除主界面行。")
+        {
+            ActionContent = revertButton,
+            Duration = TimeSpan.FromSeconds(10)
+        };
+        revertButton.Click += (_, _) =>
+        {
+            lines.Insert(Math.Min(index, lines.Count), settings);
+            toastMessage.Close();
+        };
+        this.ShowToast(toastMessage);
     }
 
     private void ToggleButtonIsNotificationEnabled_OnIsCheckedChanged(object? sender, RoutedEventArgs e)

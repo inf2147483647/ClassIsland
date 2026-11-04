@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,10 +13,14 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Xaml.Interactions.DragAndDrop;
 using ClassIsland.Core.Attributes;
+using ClassIsland.Core.Extensions.UI;
+using ClassIsland.Core.Helpers.UI;
 using ClassIsland.Core.Models.Components;
+using ClassIsland.Core.Models.UI;
 using ClassIsland.Core.Services.Registry;
 using ClassIsland.Shared.Helpers;
 using CommunityToolkit.Mvvm.Input;
+using FluentAvalonia.UI.Controls;
 
 namespace ClassIsland.Controls.EditMode;
 
@@ -143,7 +148,7 @@ public partial class EditableComponentsListBox : ListBox
     }
 
     [RelayCommand]
-    private void DeleteComponent(ComponentSettings? componentSettings)
+    private async Task DeleteComponent(ComponentSettings? componentSettings)
     {
         if (componentSettings == null
             || ItemsSource is not IList<ComponentSettings> components)
@@ -151,6 +156,18 @@ public partial class EditableComponentsListBox : ListBox
             return;
         }
 
+        var componentName = componentSettings.AssociatedComponentInfo.Name;
+        if (!await ContentDialogHelper.ShowConfirmationDialog(
+                "删除组件",
+                $"您确定要删除组件“{componentName}”吗？",
+                root: TopLevel.GetTopLevel(this),
+                positiveText: "删除",
+                defaultButton: FAContentDialogButton.Secondary))
+        {
+            return;
+        }
+
+        var index = components.IndexOf(componentSettings);
         components.Remove(componentSettings);
         RaiseEvent(new EditableComponentsListBoxEventArgs(ComponentDeletedEvent)
         {
@@ -159,6 +176,19 @@ public partial class EditableComponentsListBox : ListBox
             ComponentsList = components,
             ItemPosition = new Point(0, 0)
         });
+
+        var revertButton = new Button { Content = "撤销" };
+        var toastMessage = new ToastMessage($"已删除组件“{componentName}”。")
+        {
+            ActionContent = revertButton,
+            Duration = TimeSpan.FromSeconds(10)
+        };
+        revertButton.Click += (_, _) =>
+        {
+            components.Insert(Math.Min(index, components.Count), componentSettings);
+            toastMessage.Close();
+        };
+        this.ShowToast(toastMessage);
     }
     
     [RelayCommand]
