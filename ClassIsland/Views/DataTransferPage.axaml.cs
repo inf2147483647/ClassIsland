@@ -505,6 +505,92 @@ public partial class DataTransferPage : UserControl
         }
     }
     #endregion
+
+    #region ClassIsland 1.7.0.x / Export
+
+    private void SettingsExpanderExportToClassIsland1_OnClick(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.BrowseAction = BrowseClassIsland1ExportTargetAction;
+        ViewModel.PerformImportAction = PerformClassIsland1ExportAction;
+        ViewModel.PageIndex = 1;
+        ViewModel.ImportSourcePath = "";
+        ViewModel.ImportDescription = "支持导出为可在 ClassIsland 1.7.0.x 中使用的数据包。导出后解压到 1.7.0.x 的安装目录（与 ClassIsland.exe 同级）即可。" +
+                                      "1.7.0.x 不支持的数据条目会被跳过。";
+        ViewModel.IsExport = true;
+    }
+
+    private async Task BrowseClassIsland1ExportTargetAction()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null)
+        {
+            return;
+        }
+
+        PopupHelper.DisableAllPopups();
+        var file = await PlatformServices.FilePickerService.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "浏览保存的导出文件",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("ClassIsland 1.7.0.x 数据包")
+                {
+                    Patterns = ["*.zip"]
+                }
+            ],
+            SuggestedFileName = $"ClassIsland_1.7_data_{AppBase.AppVersion}_{DateTime.Now:yyyyMMdd_HHmmss}.zip"
+        }, topLevel);
+        PopupHelper.RestoreAllPopups();
+
+        ViewModel.ImportSourcePath = file ?? "";
+    }
+
+    private async Task PerformClassIsland1ExportAction()
+    {
+        if (string.IsNullOrWhiteSpace(ViewModel.ImportSourcePath))
+        {
+            return;
+        }
+
+        var temp = "";
+        try
+        {
+            ViewModel.PageIndex = 3;
+            var path = ViewModel.ImportSourcePath;
+            var topLevel = TopLevel.GetTopLevel(this) ?? AppBase.Current.GetRootWindow();
+            using var file = await PlatformServices.FilePickerService.GetFileAsync(path, topLevel)
+                             ?? throw new FileNotFoundException("无法打开所选导出文件。", path);
+            await using var outputStream = await file.OpenWriteAsync();
+            if (outputStream.CanSeek)
+            {
+                outputStream.SetLength(0);
+                outputStream.Position = 0;
+            }
+
+            temp = Directory.CreateTempSubdirectory("ClassIslandV1DataExport").FullName;
+            await Task.Run(() =>
+            {
+                ClassIslandV1DataExportHelper.Export(temp, ViewModel.IsSettingsSelected,
+                    ViewModel.IsProfileSelected, ViewModel.IsOtherConfigSelected, ViewModel.Logger);
+                ZipFile.CreateFromDirectory(temp, outputStream);
+            });
+            ViewModel.PageIndex = 4;
+        }
+        catch (Exception e)
+        {
+            ViewModel.Logger.LogError(e, "导出数据到 ClassIsland 1.7.0.x 时发生意外错误。");
+            this.ShowErrorToast("导出数据时发生意外错误。", e);
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(temp) && Directory.Exists(temp))
+            {
+                Directory.Delete(temp, true);
+            }
+        }
+    }
+
+    #endregion
     
 
     #region Class Widgets

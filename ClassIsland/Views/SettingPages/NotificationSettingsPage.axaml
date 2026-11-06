@@ -1,4 +1,4 @@
-﻿<controls:SettingsPageBase x:Class="ClassIsland.Views.SettingPages.NotificationSettingsPage"
+﻿﻿<controls:SettingsPageBase x:Class="ClassIsland.Views.SettingPages.NotificationSettingsPage"
                            xmlns="https://github.com/avaloniaui"
                            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -307,6 +307,45 @@
                                                     Classes="auto-tooltip"
                                                     ci:SliderDragTooltipAssist.StringFormat="F2"
                                                     IsSnapToTickEnabled="True" />
+                                        </controls3:FASettingsExpanderItem.Footer>
+                                    </controls3:FASettingsExpanderItem>
+                                </controls3:FASettingsExpander>
+
+                                <!-- 高性能提醒特效 -->
+                                <controls3:FASettingsExpander
+                                    IconSource="{ci:FluentIconSource {ci:FI LayerDiagonalSparkleRegular}}"
+                                    Header="高性能提醒特效"
+                                    Description="提醒触发时使用独立渲染的覆盖层播放强调特效，可降低低端设备的掉帧。启用后将替代内置强调特效。">
+                                    <controls3:FASettingsExpander.IsVisible>
+                                        <OnPlatform Default="False">
+                                            <On Options="Windows" Content="True"/>
+                                        </OnPlatform>
+                                    </controls3:FASettingsExpander.IsVisible>
+                                    <controls3:FASettingsExpander.Footer>
+                                        <ToggleSwitch
+                                            IsChecked="{Binding ViewModel.SettingsService.Settings.IsHighPerformanceNotificationEffectEnabled, Mode=TwoWay}"/>
+                                    </controls3:FASettingsExpander.Footer>
+                                    <controls3:FASettingsExpanderItem
+                                        Content="帧率限制"
+                                        Description="低端设备建议选择 30 FPS。">
+                                        <controls3:FASettingsExpanderItem.Footer>
+                                            <ComboBox
+                                                SelectedIndex="{Binding ViewModel.HighPerformanceNotificationEffectFpsSelectedIndex, Mode=TwoWay}">
+                                                <ComboBoxItem>60 FPS — 流畅模式（推荐）</ComboBoxItem>
+                                                <ComboBoxItem>30 FPS — 省电模式</ComboBoxItem>
+                                            </ComboBox>
+                                        </controls3:FASettingsExpanderItem.Footer>
+                                    </controls3:FASettingsExpanderItem>
+                                    <controls3:FASettingsExpanderItem
+                                        Content="动画精度"
+                                        Description="精度越高视觉效果越好，占用也相应增加。">
+                                        <controls3:FASettingsExpanderItem.Footer>
+                                            <ComboBox
+                                                SelectedIndex="{Binding ViewModel.HighPerformanceNotificationEffectQualitySelectedIndex, Mode=TwoWay}">
+                                                <ComboBoxItem>简化</ComboBoxItem>
+                                                <ComboBoxItem>标准（推荐）</ComboBoxItem>
+                                                <ComboBoxItem>精细</ComboBoxItem>
+                                            </ComboBox>
                                         </controls3:FASettingsExpanderItem.Footer>
                                     </controls3:FASettingsExpanderItem>
                                 </controls3:FASettingsExpander>

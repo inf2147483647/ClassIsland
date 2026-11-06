@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ClassIsland.Shared.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -181,6 +182,17 @@ public class ConfigureFileHelper
         writer.Write(JsonSerializer.Serialize<T>(o, options));
         writer.Flush();
         stream.Flush();
+    }
+
+    /// <summary>
+    /// 将配置对象序列化为 JSON 节点，使用与配置文件一致的序列化选项。
+    /// </summary>
+    /// <typeparam name="T">配置类型</typeparam>
+    /// <param name="o">要序列化的对象</param>
+    /// <returns>序列化后的 JSON 节点</returns>
+    public static JsonNode? SerializeToNode<T>(T o)
+    {
+        return JsonSerializer.SerializeToNode(o, SerializerOptions);
     }
 
     /// <summary>

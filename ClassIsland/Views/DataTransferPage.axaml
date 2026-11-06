@@ -67,6 +67,14 @@
                                                     UriSource="avares://ClassIsland/Assets/AppLogo.png" />
                                             </controls:FASettingsExpander.IconSource>
                                         </controls:FASettingsExpander>
+                                        <controls:FASettingsExpander Header="ClassIsland 1.7.0.x"
+                                                                   IsClickEnabled="True"
+                                                                   Click="SettingsExpanderExportToClassIsland1_OnClick">
+                                            <controls:FASettingsExpander.IconSource>
+                                                <controls:FABitmapIconSource
+                                                    UriSource="avares://ClassIsland/Assets/AppLogo.png" />
+                                            </controls:FASettingsExpander.IconSource>
+                                        </controls:FASettingsExpander>
                                     </StackPanel>
                                 </TabItem>
                             </TabControl>

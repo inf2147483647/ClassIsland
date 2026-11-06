@@ -34,6 +34,12 @@ public static class PlatformServices
     public static IDesktopService DesktopService { get; internal set; } = new DesktopServiceStub();
 
     /// <summary>
+    /// 提醒强调特效的平台覆盖层服务
+    /// </summary>
+    public static INotificationEffectOverlayService NotificationEffectOverlayService { get; internal set; } =
+        new NotificationEffectOverlayServiceStub();
+
+    /// <summary>
     /// 当前平台是否支持定位服务
     /// </summary>
     public static bool IsLocationSupported => LocationService is not LocationServiceStub;

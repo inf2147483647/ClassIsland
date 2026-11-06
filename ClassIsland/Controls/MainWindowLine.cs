@@ -22,6 +22,7 @@ using Avalonia.Data.Core;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml.Templates;
+using Avalonia.Media;
 using Avalonia.Metadata;
 using Avalonia.Platform;
 using Avalonia.Reactive;
@@ -836,6 +837,22 @@ public class MainWindowLine : ContentControl, INotificationConsumer
         return _centerPointCache = wrapper.PointToScreen(new Point(wrapper.Bounds.Width / 2, wrapper.Bounds.Height / 2));
     }
 
+    private static Color ResolveEffectColor(IBrush? brush)
+    {
+        if (brush is ISolidColorBrush solid)
+        {
+            return solid.Color;
+        }
+
+        if (Application.Current?.TryFindResource("AccentFillColorDefaultBrush", out var value) == true &&
+            value is ISolidColorBrush accent)
+        {
+            return accent.Color;
+        }
+
+        return Colors.DeepSkyBlue;
+    }
+
     private async void ProcessNotification()
     {
         if (_isUnloading)
@@ -906,7 +923,20 @@ public class MainWindowLine : ContentControl, INotificationConsumer
                         !IsAllComponentsHid && SettingsService.Settings.IsMainWindowVisible && !request.MaskSession.HasSoundsPlayed)
                     {
                         var center = GetCenter();
-                        TopmostEffectWindow.PlayEffect(new RippleEffect(center, MaskContent.Color));
+                        var mainWindowHandle = TopLevel.GetTopLevel(this)?.TryGetPlatformHandle()?.Handle ?? 0;
+                        if (SettingsService.Settings.IsHighPerformanceNotificationEffectEnabled &&
+                            mainWindowHandle != 0 && PlatformServices.NotificationEffectOverlayService.IsSupported)
+                        {
+                            _ = PlatformServices.NotificationEffectOverlayService.PlayAsync(
+                                mainWindowHandle,
+                                ResolveEffectColor(MaskContent.Color),
+                                SettingsService.Settings.HighPerformanceNotificationEffectFpsLimit,
+                                SettingsService.Settings.HighPerformanceNotificationEffectQuality);
+                        }
+                        else
+                        {
+                            TopmostEffectWindow.PlayEffect(new RippleEffect(center, MaskContent.Color));
+                        }
                     }
 
                     await ticket.ProcessMask();

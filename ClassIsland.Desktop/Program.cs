@@ -1,4 +1,4 @@
-﻿#if Platforms_Windows
+﻿﻿#if Platforms_Windows
 using ClassIsland.Platform.Windows;
 using ClassIsland.Platform.Windows.Helpers;
 using ClassIsland.Platform.Windows.Services;
@@ -134,6 +134,7 @@ class Program
         PlatformServices.DesktopService = new DesktopService();
         PlatformServices.SystemEventsService = new SystemEventsService();
         PlatformServices.DesktopToastService = new DesktopToastService();
+        PlatformServices.NotificationEffectOverlayService = new NotificationEffectOverlayService();
         postInitCallback = () =>
         {
             AppBase.Current.AppStarted += (sender, args) =>

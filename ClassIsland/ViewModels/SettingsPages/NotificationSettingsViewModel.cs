@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Edge_tts_sharp.Model;
 using Edge_tts_sharp;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ using ClassIsland.Models;
 using ClassIsland.Models.Notification;
 using ClassIsland.Services;
 using ClassIsland.Shared.Abstraction.Models.Notification;
+using ClassIsland.Shared.Enums;
 using ClassIsland.Shared.Interfaces;
 using DynamicData;
 using DynamicData.Binding;
@@ -132,4 +133,34 @@ public partial class NotificationSettingsViewModel : ObservableRecipient
     }
 
     public bool HasValidMainWindowLine => ComponentsService.CurrentComponents.Lines.Any(x => x.IsNotificationEnabled);
+
+    public int HighPerformanceNotificationEffectFpsSelectedIndex
+    {
+        get => SettingsService.Settings.HighPerformanceNotificationEffectFpsLimit == 30 ? 1 : 0;
+        set
+        {
+            SettingsService.Settings.HighPerformanceNotificationEffectFpsLimit = value == 1 ? 30 : 60;
+            OnPropertyChanged();
+        }
+    }
+
+    public int HighPerformanceNotificationEffectQualitySelectedIndex
+    {
+        get => SettingsService.Settings.HighPerformanceNotificationEffectQuality switch
+        {
+            NotificationEffectQuality.Simplified => 0,
+            NotificationEffectQuality.Fine => 2,
+            _ => 1
+        };
+        set
+        {
+            SettingsService.Settings.HighPerformanceNotificationEffectQuality = value switch
+            {
+                0 => NotificationEffectQuality.Simplified,
+                2 => NotificationEffectQuality.Fine,
+                _ => NotificationEffectQuality.Standard
+            };
+            OnPropertyChanged();
+        }
+    }
 }

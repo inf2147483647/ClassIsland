@@ -157,6 +157,9 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
     private bool _isNotificationTopmostEnabled = true;
     private double _notificationEffectRenderingScale = 1.0;
     private bool _isNotificationEffectRenderingScaleAutoSet = false;
+    private bool _isHighPerformanceNotificationEffectEnabled = false;
+    private int _highPerformanceNotificationEffectFpsLimit = 60;
+    private NotificationEffectQuality _highPerformanceNotificationEffectQuality = NotificationEffectQuality.Standard;
     private AllContributorsRc _contributorsCache = new();
     private bool _allowNotificationSpeech = false;
     private bool _allowNotificationEffect = true;
@@ -1618,6 +1621,49 @@ public partial class Settings : ObservableRecipient, ILessonControlSettings, INo
         {
             if (value == _allowNotificationSpeech) return;
             _allowNotificationSpeech = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 是否使用脱离 Avalonia 渲染管线的高性能提醒强调特效。
+    /// </summary>
+    public bool IsHighPerformanceNotificationEffectEnabled
+    {
+        get => _isHighPerformanceNotificationEffectEnabled;
+        set
+        {
+            if (value == _isHighPerformanceNotificationEffectEnabled) return;
+            _isHighPerformanceNotificationEffectEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 高性能提醒强调特效的帧率上限。
+    /// </summary>
+    public int HighPerformanceNotificationEffectFpsLimit
+    {
+        get => _highPerformanceNotificationEffectFpsLimit;
+        set
+        {
+            var clamped = value is 30 or 60 ? value : 60;
+            if (clamped == _highPerformanceNotificationEffectFpsLimit) return;
+            _highPerformanceNotificationEffectFpsLimit = clamped;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 高性能提醒强调特效的动画精度。
+    /// </summary>
+    public NotificationEffectQuality HighPerformanceNotificationEffectQuality
+    {
+        get => _highPerformanceNotificationEffectQuality;
+        set
+        {
+            if (value == _highPerformanceNotificationEffectQuality) return;
+            _highPerformanceNotificationEffectQuality = value;
             OnPropertyChanged();
         }
     }
