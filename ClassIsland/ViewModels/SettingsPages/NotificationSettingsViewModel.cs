@@ -1,4 +1,4 @@
-﻿﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Edge_tts_sharp.Model;
 using Edge_tts_sharp;
 using System.Collections.Generic;

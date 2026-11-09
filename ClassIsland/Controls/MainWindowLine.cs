@@ -307,11 +307,6 @@ public class MainWindowLine : ContentControl, INotificationConsumer
 
     private ISpeechService SpeechService { get; } = IAppHost.GetService<ISpeechService>();
 
-    private ITopmostEffectPlayer? _topmostEffectPlayer;
-
-    private ITopmostEffectPlayer TopmostEffectWindow =>
-        _topmostEffectPlayer ??= IAppHost.GetService<ITopmostEffectPlayer>();
-
     private IAudioService AudioService { get; } = IAppHost.GetService<IAudioService>();
 
     private Grid? GridWrapper;
@@ -919,8 +914,7 @@ public class MainWindowLine : ContentControl, INotificationConsumer
                     PseudoClasses.Set(":overlay-anim", false);
 
                     // 播放提醒特效
-                    if (_mainWindow != null && settings.IsNotificationEffectEnabled && SettingsService.Settings.AllowNotificationEffect &&
-                        !IsAllComponentsHid && SettingsService.Settings.IsMainWindowVisible && !request.MaskSession.HasSoundsPlayed)
+                    if (!IsAllComponentsHid && SettingsService.Settings.IsMainWindowVisible && !request.MaskSession.HasSoundsPlayed)
                     {
                         var center = GetCenter();
                         var mainWindowHandle = TopLevel.GetTopLevel(this)?.TryGetPlatformHandle()?.Handle ?? 0;
@@ -935,7 +929,12 @@ public class MainWindowLine : ContentControl, INotificationConsumer
                         }
                         else
                         {
-                            TopmostEffectWindow.PlayEffect(new RippleEffect(center, MaskContent.Color));
+                            ticket.TryPlayNotificationEffect(new NotificationEffectContext
+                            {
+                                Center = center,
+                                Request = request,
+                                Content = MaskContent
+                            });
                         }
                     }
 

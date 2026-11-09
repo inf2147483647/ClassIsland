@@ -1,4 +1,4 @@
-﻿﻿#if Platforms_Windows
+﻿#if Platforms_Windows
 using ClassIsland.Platform.Windows;
 using ClassIsland.Platform.Windows.Helpers;
 using ClassIsland.Platform.Windows.Services;
