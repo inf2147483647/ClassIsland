@@ -6,6 +6,7 @@
              xmlns:ci="http://classisland.tech/schemas/xaml/core"
              xmlns:converters="clr-namespace:ClassIsland.Converters"
              xmlns:services="clr-namespace:ClassIsland.Core.Abstractions.Services;assembly=ClassIsland.Core"
+             xmlns:controls="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
              xmlns:views="clr-namespace:ClassIsland.Views.MainViewParts"
              x:Class="ClassIsland.Views.MainViewParts.SubjectEditView"
              ci:ViewHostAssist.DrawerMaxWidth="480"
@@ -48,6 +49,16 @@
             </ci:Field>
             <CheckBox IsChecked="{Binding Subject.IsOutDoor, Mode=TwoWay}"
                       Content="该科目是户外课程" Click="CommitField_OnLostFocus"/>
+            <CheckBox IsChecked="{Binding Subject.IsOvertimeEnabled, Mode=TwoWay}"
+                      Content="允许拖堂（延迟下课提醒）" Click="CommitField_OnLostFocus"/>
+            <ci:Field Label="拖堂提醒延迟" Suffix="秒">
+                <controls:FANumberBox Minimum="0" Maximum="3600"
+                                      Value="{Binding Subject.OvertimeSeconds, Mode=TwoWay, Converter={x:Static ci:NotNaNConverter.Instance}}"
+                                      IsEnabled="{Binding Subject.IsOvertimeEnabled}"
+                                      Width="150"
+                                      SpinButtonPlacementMode="Inline"
+                                      LostFocus="CommitField_OnLostFocus"/>
+            </ci:Field>
             <Separator Margin="0,12,0,4"/>
             <ci:IconText Glyph="{ci:FI OptionsRegular}" Text="更多选项"/>
             <ItemsControl ItemsSource="{x:Static services:IAttachedSettingsHostService.SubjectSettingsAttachedSettingsControls}">

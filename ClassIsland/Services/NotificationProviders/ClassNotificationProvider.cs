@@ -72,6 +72,8 @@ public class ClassNotificationProvider : NotificationProviderBase<ClassNotificat
 
     private NotificationRequest? _prepareOnClassNotificationRequest;
 
+    private Subject? _lastOnClassSubject;
+
     private INotificationHostService NotificationHostService { get; }
 
     private ILessonsService LessonsService { get; }
@@ -91,6 +93,11 @@ public class ClassNotificationProvider : NotificationProviderBase<ClassNotificat
 
     private void UpdateTimerTick(object? sender, EventArgs e)
     {
+        if (LessonsService.CurrentState == TimeState.OnClass)
+        {
+            _lastOnClassSubject = LessonsService.CurrentSubject;
+        }
+
         var tClassDelta = LessonsService.OnClassLeftTime;
         var settingsSource = GetEffectiveSettings();
 
@@ -240,6 +247,42 @@ public class ClassNotificationProvider : NotificationProviderBase<ClassNotificat
             LessonsService.CurrentTimeLayoutItem == TimeLayoutItem.Empty ||
             ExactTimeService.GetCurrentLocalDateTime().TimeOfDay - LessonsService.CurrentTimeLayoutItem.StartTime > TimeSpan.FromSeconds(5))
             return;
+
+        var overtimeSeconds = GetOvertimeSeconds();
+        if (overtimeSeconds > 0)
+        {
+            var breakingTimeLayoutItem = LessonsService.CurrentTimeLayoutItem;
+            _ = ShowClassOffNotificationAfterDelayAsync(overtimeSeconds, breakingTimeLayoutItem);
+            return;
+        }
+
+        ShowClassOffNotification(settings, settingsSource);
+    }
+
+    private int GetOvertimeSeconds()
+    {
+        var subject = _lastOnClassSubject;
+        return subject is { IsOvertimeEnabled: true } ? Math.Clamp(subject.OvertimeSeconds, 0, 3600) : 0;
+    }
+
+    private async Task ShowClassOffNotificationAfterDelayAsync(int seconds, TimeLayoutItem breakingTimeLayoutItem)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(seconds));
+
+        // 拖堂延迟期间课间可能已经结束，此时不再补发下课提醒。
+        if (LessonsService.CurrentState != TimeState.Breaking ||
+            !ReferenceEquals(LessonsService.CurrentTimeLayoutItem, breakingTimeLayoutItem))
+        {
+            return;
+        }
+
+        var settings = GetAttachedSettings();
+        IClassNotificationSettings settingsSource = settings?.IsAttachSettingsEnabled == true ? settings : Settings;
+        ShowClassOffNotification(settings, settingsSource);
+    }
+
+    private void ShowClassOffNotification(ClassNotificationAttachedSettings? settings, IClassNotificationSettings settingsSource)
+    {
         var overlayText = settings?.ClassOffOverlayText ?? Settings.ClassOffOverlayText;
         var showOverlayText = !string.IsNullOrWhiteSpace(overlayText);
 

@@ -2423,6 +2423,8 @@
                                                                 Header="简称"/>
                                         <DataGridCheckBoxColumn Binding="{Binding Value.IsOutDoor, Mode=TwoWay}"
                                                                     Header="户外课程？"/>
+                                        <DataGridCheckBoxColumn Binding="{Binding Value.IsOvertimeEnabled, Mode=TwoWay}"
+                                                                    Header="拖堂？"/>
                                         <DataGridTextColumn Binding="{Binding Value.TeacherName, Mode=TwoWay}"
                                                                 Header="科任老师"/>
                                         <DataGridTextColumn Binding="{Binding Value.Location, Mode=TwoWay}"
@@ -2481,6 +2483,17 @@
                                             <CheckBox Margin="0 6 0 0"
                                                       IsChecked="{Binding IsOutDoor}"
                                                       Content="该科目是户外课程" />
+                                            <!-- 拖堂 -->
+                                            <CheckBox Margin="0 6 0 0"
+                                                      IsChecked="{Binding IsOvertimeEnabled}"
+                                                      Content="允许拖堂（延迟下课提醒）" />
+                                            <ci:Field Label="拖堂提醒延迟" Suffix="秒">
+                                                <controls:FANumberBox Minimum="0" Maximum="3600"
+                                                                     Value="{Binding OvertimeSeconds, Mode=TwoWay, Converter={x:Static ci:NotNaNConverter.Instance}}"
+                                                                     IsEnabled="{Binding IsOvertimeEnabled}"
+                                                                     Width="150"
+                                                                     SpinButtonPlacementMode="Inline"/>
+                                            </ci:Field>
 
                                             <!-- 附加属性 -->
                                             <Separator Margin="0 20 0 8" />

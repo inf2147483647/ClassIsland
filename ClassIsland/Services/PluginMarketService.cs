@@ -134,35 +134,68 @@ public class PluginMarketService : ObservableRecipient, IPluginMarketService
                     ((long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString());
                 Logger.LogDebug("正在刷新插件源：{}（{}）", indexInfo.Id, url);
                 var archive = Path.GetTempFileName();
-                var download = DownloadBuilder.New()
-                    .WithUrl(url)
-                    .WithFileLocation(archive)
-                    .WithConfiguration(new DownloadConfiguration()
-                    {
-                        BlockTimeout = 10_000,
-                        HttpClientTimeout = 10_000
-                    })
-                    .Build();
-                var i1 = i;
-                download.DownloadProgressChanged +=
-                    (sender, args) =>
-                        PluginSourceDownloadProgress = (args.ProgressPercentage / total) + (i1 / total * 100.0);
-                download.DownloadFileCompleted += (sender, args) =>
+                string? localIndexDirectory = null;
+                var isLocalSource = TryGetLocalPath(url, out var localPath);
+                if (isLocalSource && Directory.Exists(localPath))
                 {
-                    if (args.Error != null)
+                    Logger.LogDebug("正在从本地文件夹加载插件源：{}", localPath);
+                    localIndexDirectory = localPath;
+                    PluginSourceDownloadProgress = ((i + 1) / total * 100.0);
+                }
+                else if (isLocalSource && File.Exists(localPath))
+                {
+                    Logger.LogDebug("正在从本地压缩包加载插件源：{}", localPath);
+                    File.Copy(localPath, archive, true);
+                    PluginSourceDownloadProgress = ((i + 1) / total * 100.0);
+                }
+                else if (isLocalSource)
+                {
+                    throw new Exception($"无法加载插件源：找不到本地插件源 {localPath}。");
+                }
+                else
+                {
+                    var download = DownloadBuilder.New()
+                        .WithUrl(url)
+                        .WithFileLocation(archive)
+                        .WithConfiguration(new DownloadConfiguration()
+                        {
+                            BlockTimeout = 10_000,
+                            HttpClientTimeout = 10_000
+                        })
+                        .Build();
+                    var i1 = i;
+                    download.DownloadProgressChanged +=
+                        (sender, args) =>
+                            PluginSourceDownloadProgress = (args.ProgressPercentage / total) + (i1 / total * 100.0);
+                    Exception? downloadException = null;
+                    download.DownloadFileCompleted += (sender, args) => downloadException = args.Error;
+                    await download.StartAsync();
+                    if (downloadException != null)
                     {
-                        throw new Exception($"无法加载插件源：{args.Error.Message}", args.Error);
+                        throw new Exception($"无法加载插件源：{downloadException.Message}", downloadException);
                     }
-                    var indexFolderPath = Path.Combine(Services.PluginService.PluginsIndexPath, indexInfo.Id);
-                    if (Directory.Exists(indexFolderPath))
-                    {
-                        Directory.Delete(indexFolderPath, true);
-                    }
+                }
 
-                    Directory.CreateDirectory(indexFolderPath);
+                var indexFolderPath = Path.Combine(Services.PluginService.PluginsIndexPath, indexInfo.Id);
+                if (Directory.Exists(indexFolderPath))
+                {
+                    Directory.Delete(indexFolderPath, true);
+                }
+
+                Directory.CreateDirectory(indexFolderPath);
+                if (localIndexDirectory != null)
+                {
+                    FileFolderService.CopyFolder(localIndexDirectory, indexFolderPath, true);
+                    if (!File.Exists(Path.Combine(indexFolderPath, "index.v2.json")))
+                    {
+                        throw new Exception(
+                            "无法加载插件源：本地插件源文件夹中缺少 index.v2.json 文件。请选择插件索引压缩包，或包含 index.v2.json 的文件夹。");
+                    }
+                }
+                else
+                {
                     ZipFile.ExtractToDirectory(archive, indexFolderPath);
-                };
-                await download.StartAsync();
+                }
 
                 i++;
             }
@@ -322,33 +355,14 @@ public class PluginMarketService : ObservableRecipient, IPluginMarketService
         };
         DownloadTasks[id] = task;
         var archive = Path.GetTempFileName() + ".tmp";
-        var download = DownloadBuilder.New()
-            .WithUrl(url)
-            .WithFileLocation(archive)
-            .WithConfiguration(new DownloadConfiguration())
-            .Build();
         transaction.SetTag("url", url);
         if (Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri))
         {
             transaction.SetTag("url.host", uri.Host);
         }
 
-        var stopwatch = new Stopwatch();
-        download.DownloadFileCompleted += (sender, args) =>
+        void CompleteDownload()
         {
-            stopwatch.Stop();
-            transaction.SetExtra("download.size", download.TotalFileSize);
-            var speed = stopwatch.Elapsed.TotalSeconds == 0
-                ? 0.0
-                : download.TotalFileSize / stopwatch.Elapsed.TotalSeconds;
-            transaction.SetExtra("download.bytesPerSecond", speed);
-            if (args.Error != null)
-            {
-                spanDownload.Finish(args.Error, SpanStatus.InternalError);
-                throw new Exception($"无法下载插件 {id}：{args.Error.Message}", args.Error);
-            }
-            spanDownload.Finish(SpanStatus.Ok);
-
             var spanValidateChecksum = transaction.StartChild("validate");
             ChecksumHelper.VerifyChecksum(archive, md5);
             spanValidateChecksum.Finish(SpanStatus.Ok);
@@ -356,22 +370,56 @@ public class PluginMarketService : ObservableRecipient, IPluginMarketService
             var spanMoveToCache = transaction.StartChild("moveToCache");
             File.Move(archive, Path.Combine(Services.PluginService.PluginsPkgRootPath, id + ".cipx"), true);
             spanMoveToCache.Finish(SpanStatus.Ok);
-        };
-        download.DownloadProgressChanged += (sender, args) =>
-        {
-            task.Progress = args.ProgressPercentage;
-        };
+        }
+
         var ignoreSsl = SettingsService.Settings.IgnoreSslForPluginMirrors;
         var prevCallback = (ignoreSsl ? ServicePointManager.ServerCertificateValidationCallback : null);
-        if (ignoreSsl)
+        var localFilePath = TryGetLocalPath(url, out var path) && File.Exists(path) ? path : null;
+        if (ignoreSsl && localFilePath == null)
         {
             ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
         }
         try
         {
             BindDownloadTasks();
-            stopwatch.Start();
-            await download.StartAsync(task.CancellationToken);
+            if (localFilePath != null)
+            {
+                Logger.LogDebug("正在从本地加载插件包：{}", localFilePath);
+                File.Copy(localFilePath, archive, true);
+                task.Progress = 100;
+                CompleteDownload();
+            }
+            else
+            {
+                var download = DownloadBuilder.New()
+                    .WithUrl(url)
+                    .WithFileLocation(archive)
+                    .WithConfiguration(new DownloadConfiguration())
+                    .Build();
+                var stopwatch = new Stopwatch();
+                download.DownloadFileCompleted += (sender, args) =>
+                {
+                    stopwatch.Stop();
+                    transaction.SetExtra("download.size", download.TotalFileSize);
+                    var speed = stopwatch.Elapsed.TotalSeconds == 0
+                        ? 0.0
+                        : download.TotalFileSize / stopwatch.Elapsed.TotalSeconds;
+                    transaction.SetExtra("download.bytesPerSecond", speed);
+                    if (args.Error != null)
+                    {
+                        spanDownload.Finish(args.Error, SpanStatus.InternalError);
+                        throw new Exception($"无法下载插件 {id}：{args.Error.Message}", args.Error);
+                    }
+                    spanDownload.Finish(SpanStatus.Ok);
+                    CompleteDownload();
+                };
+                download.DownloadProgressChanged += (sender, args) =>
+                {
+                    task.Progress = args.ProgressPercentage;
+                };
+                stopwatch.Start();
+                await download.StartAsync(task.CancellationToken);
+            }
             item.RestartRequired = true;
             if (MergedPlugins.TryGetValue(id, out var plugin))
             {
@@ -467,6 +515,18 @@ public class PluginMarketService : ObservableRecipient, IPluginMarketService
         SettingsService.Settings.OfficialIndexMirrors = ConfigureFileHelper.CopyObject(
             defaultIndex.DownloadMirrors);
         BindDownloadTasks();
+    }
+
+    private static bool TryGetLocalPath(string url, out string path)
+    {
+        path = "";
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !uri.IsFile)
+        {
+            return false;
+        }
+
+        path = uri.LocalPath;
+        return true;
     }
 
     private void BindDownloadTasks()

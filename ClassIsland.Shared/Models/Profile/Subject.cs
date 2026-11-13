@@ -14,6 +14,8 @@ public class Subject : AttachableSettingsObject
     private string _icon = "lucide(\ue54f)";
     private string _colorHex = "#66ccff";
     private string _location = "";
+    private bool _isOvertimeEnabled = false;
+    private int _overtimeSeconds = 60;
     private static readonly HashSet<string> commonCompoundSurnames = new() { "万俟", "司马", "上官", "欧阳", "夏侯", "诸葛", "闻人", "东方", "赫连", "皇甫", "尉迟", "公羊", "澹台", "公冶", "宗政", "濮阳", "淳于", "单于", "太叔", "申屠", "公孙", "仲孙", "轩辕", "令狐", "钟离", "宇文", "长孙", "慕容", "鲜于", "闾丘", "司徒", "司空", "亓官", "司寇", "子车", "颛孙", "端木", "巫马", "公西", "漆雕", "乐正", "壤驷", "公良", "拓跋", "夹谷", "宰父", "谷梁", "段干", "百里", "东郭", "南门", "呼延", "羊舌", "微生", "梁丘", "左丘", "东门", "西门", "南宫", "第五" };
 
     /// <summary>
@@ -112,6 +114,35 @@ public class Subject : AttachableSettingsObject
         {
             if (value == _location) return;
             _location = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 是否开启拖堂。开启后，该科目对应课程的下课提醒将延迟 <see cref="OvertimeSeconds"/> 秒。
+    /// </summary>
+    public bool IsOvertimeEnabled
+    {
+        get => _isOvertimeEnabled;
+        set
+        {
+            if (value == _isOvertimeEnabled) return;
+            _isOvertimeEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 拖堂时长（秒），即下课提醒延迟的秒数。
+    /// </summary>
+    public int OvertimeSeconds
+    {
+        get => _overtimeSeconds;
+        set
+        {
+            value = Math.Max(0, value);
+            if (value == _overtimeSeconds) return;
+            _overtimeSeconds = value;
             OnPropertyChanged();
         }
     }
